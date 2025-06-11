@@ -36,3 +36,5 @@ router
         next();
     }, userController.updateUser)
     .delete(authenticateJWT, userController.deleteUser);
+
+module.exports = router;

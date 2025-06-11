@@ -1,22 +1,23 @@
-require('dotenv').config(); // Load environment variables from .env file
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
-const compression = require('compression');
-const xssClean = require('xss-clean');
-const hpp = require('hpp');
 const cookieParser = require('cookie-parser');
+const session = require('express-session');
 const swaggerUi = require("swagger-ui-express");
-const swaggerDocs = require("./docs/swagger");
-const cookieSession = require('cookie-session');
+const swaggerDocs = require("./swagger/swagger");
+const passport = require("./config/passport"); // Passport configuration
+const connectDB = require("./config/database");
+const winston = require("./utils/logger");
+
+
+const userRouter = require('./routes/userRoutes');
+const tourRouter = require('./routes/tourRoutes');
+const errorHandler = require("./middlewares/errorHandler");
 const authRoutes = require("./routes/authRoutes");
 const oauthRoutes = require("./routes/oauthRoutes");
-const errorHandler = require("./middleware/errorHandler");
-require("./config/passport"); // Passport configuration
-const tourRouter = require('./routes/tourRoutes');
-const userRouter = require('./routes/userRoutes');
+
 
 const app = express();
 
@@ -28,19 +29,20 @@ if(process.env.NODE_ENV === 'development') {
 }
 
 app.use(express.json()); // Parse JSON bodies
-app.use(express.static(`{__dirname}/public`)); // Serve static files from the public directory
+app.use(express.static(`${__dirname}/public`)); // Serve static files from the public directory
 app.use(cors());
 app.use(helmet());
-app.use(morgan('combined'));
 app.use(rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 100 // limit each IP to 100 requests per windowMs
     }));
 app.use(express.urlencoded({extended: true}));
-app.use(compression());
-app.use(xssClean());
-app.use(hpp());
 app.use(cookieParser());
+app.use(session({ // Added session middleware
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: true
+}));
 app.use(passport.initialize());
 app.use(passport.session());
 // Swagger docs served at /api-docs
@@ -54,8 +56,21 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/oauth', oauthRoutes);
 app.use('/api/v1/tours', tourRouter);
 app.use('/api/v1/users', userRouter);
-app.use('/api', mainRoutes);
 
 app.use(errorHandler);
 
-module.exports = app;
+
+
+// Connect to MongoDB
+(async function startServer() {
+    try {
+        await connectDB();
+        const PORT = process.env.PORT || 8080;
+        app.listen(PORT, () =>
+          winston.info(`Server running at http://localhost:${PORT}`)
+        );
+    } catch (error) {
+        winston.error(`Failed to start server: ${error.message}`);
+        process.exit(1);
+    }
+})();
