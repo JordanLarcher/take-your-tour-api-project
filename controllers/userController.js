@@ -1,4 +1,4 @@
-const User = require('../models/userModel');
+const User = require('../models/Users');
 
 
 exports.getAllUsers = async (req, res) => {
@@ -63,4 +63,12 @@ exports.createUser = async (req, res) => {
             message: err.message
         });
     }
+}
+
+exports.updateUser = async (req, res, next) => {
+
+}
+
+exports.deleteUser = async (req, res, next ) => {
+
 }

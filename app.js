@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const AppError = require('./utils/appError');
+const globalErrorHandler = require('./controllers/errorController')
 const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
 const session = require('express-session');
@@ -14,9 +16,8 @@ const winston = require("./utils/logger");
 
 const userRouter = require('./routes/userRoutes');
 const tourRouter = require('./routes/tourRoutes');
-const errorHandler = require("./middlewares/errorHandler");
-const authRoutes = require("./routes/authRoutes");
-const oauthRoutes = require("./routes/oauthRoutes");
+// const authRoutes = require("./routes/authRoutes");
+// const oauthRoutes = require("./routes/oauthRoutes");
 
 
 const app = express();
@@ -52,14 +53,16 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
 
 // 3)ROUTES
-app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/oauth', oauthRoutes);
+// app.use('/api/v1/auth', authRoutes);
+// app.use('/api/v1/oauth', oauthRoutes);
 app.use('/api/v1/tours', tourRouter);
 app.use('/api/v1/users', userRouter);
 
-app.use(errorHandler);
+app.all('*', (req, res, next) => {
+    next(new AppError(`Can't find ${req.originalUrl} on this server`));
+})
 
-
+app.use(globalErrorHandler);
 
 // Connect to MongoDB
 (async function startServer() {
