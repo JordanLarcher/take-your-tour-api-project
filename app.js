@@ -9,7 +9,7 @@ const cookieParser = require('cookie-parser');
 const session = require('express-session');
 const swaggerUi = require("swagger-ui-express");
 const swaggerDocs = require("./swagger/swagger");
-const passport = require("./config/passport"); // Passport configuration
+//const passport = require("./config/passport"); // Passport configuration
 const connectDB = require("./config/database");
 const winston = require("./utils/logger");
 
@@ -26,7 +26,6 @@ const app = express();
 //  1) Middlewares
 if(process.env.NODE_ENV === 'development') {
     app.use(morgan('dev')); // Log requests in development mode
-
 }
 
 app.use(express.json()); // Parse JSON bodies
@@ -44,8 +43,8 @@ app.use(session({ // Added session middleware
     resave: false,
     saveUninitialized: true
 }));
-app.use(passport.initialize());
-app.use(passport.session());
+// app.use(passport.initialize());
+// app.use(passport.session());
 // Swagger docs served at /api-docs
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 

@@ -1,42 +1,33 @@
 const express = require('express');
-const userController  = require('./../controllers/userController');
+const userController = require('./../controllers/userController');
 const authController = require('./../controllers/authController');
-const { validationResult } = require('express-validator');
+
 const router = express.Router();
 
-
 router.post('/signup', authController.signup);
+router.post('/login', authController.login);
 
+router.post('/forgotPassword', authController.forgotPassword);
+router.patch('/resetPassword/:token', authController.resetPassword);
+
+router.patch(
+  '/updateMyPassword',
+  authController.protect,
+  authController.updatePassword
+);
+
+router.patch('/updateMe', authController.protect, userController.updateMe);
+router.delete('/deleteMe', authController.protect, userController.deleteMe);
 
 router
-    .route('/')
-    .get(userController.getAllUsers)
-    .post( (req, res, next) => {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
-        }
-        next();
-    }, userController.createUser);
-
+  .route('/')
+  .get(userController.getAllUsers)
+  .post(userController.createUser);
 
 router
-    .route('/:id')
-    .get(userController.getUserById)
-    .put((req, res, next) => {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
-        }
-        next();
-    }, userController.updateUser)
-    .patch( (req, res, next) => {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
-        }
-        next();
-    }, userController.updateUser)
-    .delete(userController.deleteUser);
+  .route('/:id')
+  .get(userController.getUser)
+  .patch(userController.updateUser)
+  .delete(userController.deleteUser);
 
 module.exports = router;

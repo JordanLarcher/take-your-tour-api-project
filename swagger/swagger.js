@@ -11,7 +11,7 @@ const swaggerOptions = {
         },
         servers: [
             {
-                url: 'https://take-your-tour-api-project.onrender.com',
+                url:'https://take-your-tour-api-project.onrender.com',
             },
         ],
     },
