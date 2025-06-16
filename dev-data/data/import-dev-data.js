@@ -1,52 +1,33 @@
 const fs = require('fs');
-const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const Tour = require('./../../models/tourModel');
+const connectDB = require('../../config/db');
+const logger = require("../../utils/logger");
 
-dotenv.config({ path: './.env' });
+// Loading env variables
+dotenv.config({ path: `${__dirname}/../../env` });
 
-const DB = process.env.MONGO_URI.replace(
-  '<PASSWORD>',
-  process.env.DATABASE_PASSWORD
-);
-
-mongoose
-  .connect(DB, {
-    useNewUrlParser: true,
-    useCreateIndex: true,
-    useFindAndModify: false
-  })
-  .then(() => console.log('DB connection successful!'));
-
-// READ JSON FILE
-const tours = JSON.parse(
-  fs.readFileSync(`${__dirname}/tours-simple.json`, 'utf-8')
-);
-
-// IMPORT DATA INTO DB
-const importData = async () => {
+// Connecting to DB
+const run = async () => {
   try {
-    await Tour.create(tours);
-    console.log('Data successfully loaded!');
-  } catch (err) {
-    console.log(err);
+    await connectDB();
+    const tours = JSON.parse(
+        fs.readFileSync(`${__dirname}/tours-simple.json`, 'utf-8')
+    );
+
+    //Import or delete depending on the argument
+    if (process.argv[2] === '--import') {
+      await Tour.create(tours);
+      logger.info('Data successfully imported.');
+    } else if (process.argv[2] === '--delete') {
+      await Tour.deleteMany(tours);
+      logger.info('Data successfully deleted!');
+    }
+
+  } catch (error ) {
+    logger.error('Error: ', error);
+    process.exit(1);
   }
-  process.exit();
 };
 
-// DELETE ALL DATA FROM DB
-const deleteData = async () => {
-  try {
-    await Tour.deleteMany();
-    console.log('Data successfully deleted!');
-  } catch (err) {
-    console.log(err);
-  }
-  process.exit();
-};
-
-if (process.argv[2] === '--import') {
-  importData();
-} else if (process.argv[2] === '--delete') {
-  deleteData();
-}
+run();
