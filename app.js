@@ -1,78 +1,76 @@
 const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
 const morgan = require('morgan');
-const AppError = require('./utils/appError');
-const globalErrorHandler = require('./controllers/errorController')
 const rateLimit = require('express-rate-limit');
-const cookieParser = require('cookie-parser');
-const session = require('express-session');
-const swaggerUi = require("swagger-ui-express");
-const swaggerDocs = require("./swagger/swagger");
-//const passport = require("./config/passport"); // Passport configuration
-const connectDB = require("./config/database");
-const winston = require("./utils/logger");
+const helmet = require('helmet');
+const mongoSanitize = require('express-mongo-sanitize');
+const xss = require('xss-clean');
+const hpp = require('hpp');
 
-
-const userRouter = require('./routes/userRoutes');
+const AppError = require('./utils/appError');
+const globalErrorHandler = require('./controllers/errorController');
 const tourRouter = require('./routes/tourRoutes');
-// const authRoutes = require("./routes/authRoutes");
-// const oauthRoutes = require("./routes/oauthRoutes");
-
+const userRouter = require('./routes/userRoutes');
 
 const app = express();
 
+// 1) GLOBAL MIDDLEWARES
+// Set security HTTP headers
+app.use(helmet());
 
-//  1) Middlewares
-if(process.env.NODE_ENV === 'development') {
-    app.use(morgan('dev')); // Log requests in development mode
+// Development logging
+if (process.env.NODE_ENV === 'development') {
+  app.use(morgan('dev'));
 }
 
-app.use(express.json()); // Parse JSON bodies
-app.use(express.static(`${__dirname}/public`)); // Serve static files from the public directory
-app.use(cors());
-app.use(helmet());
-app.use(rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100 // limit each IP to 100 requests per windowMs
-    }));
-app.use(express.urlencoded({extended: true}));
-app.use(cookieParser());
-app.use(session({ // Added session middleware
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: true
-}));
-// app.use(passport.initialize());
-// app.use(passport.session());
-// Swagger docs served at /api-docs
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+// Limit requests from same API
+const limiter = rateLimit({
+  max: 100,
+  windowMs: 60 * 60 * 1000,
+  message: 'Too many requests from this IP, please try again in an hour!'
+});
+app.use('/api', limiter);
 
+// Body parser, reading data from body into req.body
+app.use(express.json({ limit: '10kb' }));
 
+// Data sanitization against NoSQL query injection
+app.use(mongoSanitize());
 
+// Data sanitization against XSS
+app.use(xss());
 
-// 3)ROUTES
-// app.use('/api/v1/auth', authRoutes);
-// app.use('/api/v1/oauth', oauthRoutes);
+// Prevent parameter pollution
+app.use(
+  hpp({
+    whitelist: [
+      'duration',
+      'ratingsQuantity',
+      'ratingsAverage',
+      'maxGroupSize',
+      'difficulty',
+      'price'
+    ]
+  })
+);
+
+// Serving static files
+app.use(express.static(`${__dirname}/public`));
+
+// Test middleware
+app.use((req, res, next) => {
+  req.requestTime = new Date().toISOString();
+  // console.log(req.headers);
+  next();
+});
+
+// 3) ROUTES
 app.use('/api/v1/tours', tourRouter);
 app.use('/api/v1/users', userRouter);
 
 app.all('*', (req, res, next) => {
-    next(new AppError(`Can't find ${req.originalUrl} on this server`));
-})
+  next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
+});
 
 app.use(globalErrorHandler);
 
-// Connect to MongoDB
-(async function startServer() {
-    try {
-        await connectDB();
-        const PORT = process.env.PORT || 8080;
-        app.listen(PORT, () =>
-          winston.info(`Server running at http://localhost:${PORT}`)
-        );
-    } catch (error) {
-        winston.error(`Failed to start server: ${error.message}`);
-        process.exit(1);
-    }
-})();
+module.exports = app;
