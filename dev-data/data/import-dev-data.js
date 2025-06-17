@@ -5,7 +5,7 @@ const connectDB = require('../../config/db');
 const logger = require("../../utils/logger");
 
 // Loading env variables
-dotenv.config({ path: `${__dirname}/../../env` });
+dotenv.config({ path: `${__dirname}/../../.env` });
 
 // Connecting to DB
 const run = async () => {
